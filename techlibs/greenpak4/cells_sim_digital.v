@@ -452,7 +452,7 @@ module GP_COUNT8(
 
 			"BOTH": begin
 				initial begin
-					$display("Both-edge reset mode for GP_COUNT8 not implemented");
+					$display("Both-edge reset mode for GP_COUNT14 not implemented");
 					$finish;
 				end
 			end
