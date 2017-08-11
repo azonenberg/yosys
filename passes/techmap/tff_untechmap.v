@@ -442,4 +442,3 @@ module __TFFSR_PPP_ (C, S, R, T, Q);
 		.S(S),
 		.R(R),
 	);
-endmodule
