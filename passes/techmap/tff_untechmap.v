@@ -274,7 +274,164 @@ module __TFF_PP1_ (T, C, R, Q);
 		.Q(Q),
 		.R(R),
 	);
+=======
+input T, C, R;
+output wire Q;
+
+wire xorout;
+
+$_XOR_ xorgate (
+    .A(T),
+    .B(Q),
+    .Y(xorout),
+);
+
+$_DFF_NN0_ dff (
+    .C(C),
+    .D(xorout),
+    .Q(Q),
+    .R(R),
+);
 endmodule
+
+module __TFF_NN1_ (T, C, R, Q);
+input T, C, R;
+output wire Q;
+
+wire xorout;
+
+$_XOR_ xorgate (
+    .A(T),
+    .B(Q),
+    .Y(xorout),
+);
+
+$_DFF_NN1_ dff (
+    .C(C),
+    .D(xorout),
+    .Q(Q),
+    .R(R),
+);
+endmodule
+
+module __TFF_NP0_ (T, C, R, Q);
+input T, C, R;
+output wire Q;
+
+wire xorout;
+
+$_XOR_ xorgate (
+    .A(T),
+    .B(Q),
+    .Y(xorout),
+);
+
+$_DFF_NP0_ dff (
+    .C(C),
+    .D(xorout),
+    .Q(Q),
+    .R(R),
+);
+endmodule
+
+module __TFF_NP1_ (T, C, R, Q);
+input T, C, R;
+output wire Q;
+
+wire xorout;
+
+$_XOR_ xorgate (
+    .A(T),
+    .B(Q),
+    .Y(xorout),
+);
+
+$_DFF_NP1_ dff (
+    .C(C),
+    .D(xorout),
+    .Q(Q),
+    .R(R),
+);
+endmodule
+
+module __TFF_PN0_ (T, C, R, Q);
+input T, C, R;
+output wire Q;
+
+wire xorout;
+
+$_XOR_ xorgate (
+    .A(T),
+    .B(Q),
+    .Y(xorout),
+);
+
+$_DFF_PN0_ dff (
+    .C(C),
+    .D(xorout),
+    .Q(Q),
+    .R(R),
+);
+endmodule
+
+module __TFF_PN1_ (T, C, R, Q);
+input T, C, R;
+output wire Q;
+
+wire xorout;
+
+$_XOR_ xorgate (
+    .A(T),
+    .B(Q),
+    .Y(xorout),
+);
+
+$_DFF_PN1_ dff (
+    .C(C),
+    .D(xorout),
+    .Q(Q),
+    .R(R),
+);
+endmodule
+
+module __TFF_PP0_ (T, C, R, Q);
+input T, C, R;
+output wire Q;
+
+wire xorout;
+
+$_XOR_ xorgate (
+    .A(T),
+    .B(Q),
+    .Y(xorout),
+);
+
+$_DFF_PP0_ dff (
+    .C(C),
+    .D(xorout),
+    .Q(Q),
+    .R(R),
+);
+endmodule
+
+module __TFF_PP1_ (T, C, R, Q);
+input T, C, R;
+output wire Q;
+
+wire xorout;
+
+$_XOR_ xorgate (
+    .A(T),
+    .B(Q),
+    .Y(xorout),
+);
+
+$_DFF_PP1_ dff (
+    .C(C),
+    .D(xorout),
+    .Q(Q),
+    .R(R),
+);
 
 module __TFFSR_NNN_ (C, S, R, T, Q);
 	input C, S, R, T;
