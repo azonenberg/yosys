@@ -134,6 +134,23 @@ struct RecoverAdderCorePass : public Pass {
                 }
             }
 
+            // Need to find fan-outs into module ports
+            pool<SigBit> carry_fanout_to_port;
+            for (auto wire : module->selected_wires())
+            {
+                if (wire->port_output)
+                {
+                    for (auto bit : sigmap(wire))
+                    {
+                        if (carry_wires.count(bit))
+                        {
+                            log("Found a carry fanout to port %s\n", wire->name.c_str());
+                            carry_fanout_to_port.insert(bit);
+                        }
+                    }
+                }
+            }
+
             // Do the actual adder extraction logic
             pool<Cell*> consumed_cells;
             for (auto cell : addsub_cells)
