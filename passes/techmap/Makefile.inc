@@ -24,8 +24,6 @@ $(eval $(call add_share_file,share/untechmap,passes/techmap/adder_untechmap.lib)
 $(eval $(call add_share_file,share/untechmap,passes/techmap/adder_untechmap.v))
 $(eval $(call add_share_file,share/untechmap,passes/techmap/adder_untechmap_gates.v))
 OBJS += passes/techmap/recover_adder_core.o
-OBJS += passes/techmap/recover_reduce.o
-OBJS += passes/techmap/recover_reduce_core.o
 OBJS += passes/techmap/recover_tff.o
 $(eval $(call add_share_file,share/untechmap,passes/techmap/tff_untechmap.v))
 OBJS += passes/techmap/alumacc.o
