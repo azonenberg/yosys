@@ -269,8 +269,6 @@ module GP_COUNT8_ADV(input CLK, input RST, output reg OUT,
 		end
 	end
 
-	reg[13:0] count = COUNT_TO;
-
 	//Combinatorially output underflow flag whenever we wrap low
 	always @(*) begin
 		if(UP)
