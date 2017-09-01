@@ -20,7 +20,6 @@ OBJS += passes/techmap/extract_fa.o
 OBJS += passes/techmap/extract_counter.o
 OBJS += passes/techmap/extract_reduce.o
 OBJS += passes/techmap/recover_adder.o
-OBJS += passes/techmap/extract_counter.o
 $(eval $(call add_share_file,share/untechmap,passes/techmap/adder_untechmap.lib))
 $(eval $(call add_share_file,share/untechmap,passes/techmap/adder_untechmap.v))
 $(eval $(call add_share_file,share/untechmap,passes/techmap/adder_untechmap_gates.v))
