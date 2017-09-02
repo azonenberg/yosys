@@ -402,8 +402,6 @@ module GP_COUNT8(
 	parameter COUNT_TO		= 8'h1;
 	parameter CLKIN_DIVIDE	= 1;
 
-	reg[7:0] count = COUNT_TO;
-
 	initial begin
 		if(CLKIN_DIVIDE != 1) begin
 			$display("ERROR: CLKIN_DIVIDE values other than 1 not implemented");
@@ -470,7 +468,7 @@ module GP_COUNT8(
 
 			default: begin
 				initial begin
-					$display("Invalid RESET_MODE on GP_COUNT14");
+					$display("Invalid RESET_MODE on GP_COUNT8");
 					$finish;
 				end
 			end
