@@ -190,7 +190,7 @@ void recover_tff_counters_worker(
 	auto counter = module->addCell(NEW_ID, "$__COUNT_");
 	counter->setParam("\\RESET_MODE", RTLIL::Const("FIXME"));	//not yet implemented
 	counter->setParam("\\WIDTH", RTLIL::Const(count_width));
-	counter->setParam("\\COUNT_TO", RTLIL::Const(pow(2, count_width) - 1);
+	counter->setParam("\\COUNT_TO", RTLIL::Const(pow(2, count_width) - 1));
 	counter->setParam("\\HAS_CE", RTLIL::Const(0));
 	counter->setParam("\\HAS_POUT", RTLIL::Const(1));
 	counter->setParam("\\DIRECTION", RTLIL::Const("DOWN"));
