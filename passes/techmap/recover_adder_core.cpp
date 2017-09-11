@@ -312,10 +312,29 @@ struct RecoverAdderCorePass : public Pass {
                         SigSpec b;
                         SigSpec y;
 
-                        for (auto x : cur_adder)
+                        for (size_t i = 0; i < cur_adder.size(); i++)
                         {
-                            a.append_bit(x->getPort("\\A")[0]);
-                            b.append_bit(x->getPort("\\B")[0]);
+                            auto x = cur_adder[i];
+                            auto this_a = x->getPort("\\A")[0];
+                            auto this_b = x->getPort("\\B")[0];
+                            if (x->type == "\\__XOR3_")
+                            {
+                                auto this_c = x->getPort("\\C")[0];
+                                SigBit last_cout;
+                                if (!is_sub)
+                                    last_cout = cur_adder[i - 1]->getPort("\\Cout")[0];
+                                else
+                                    last_cout = cur_adder[i - 1]->getPort("\\Bout")[0];
+
+                                if (sigmap(this_a) == sigmap(last_cout))
+                                    this_a = this_c;
+                                else if (sigmap(this_b) == sigmap(last_cout))
+                                    this_b = this_c;
+                                else
+                                    log_assert(sigmap(this_c) == sigmap(last_cout));
+                            }
+                            a.append_bit(this_a);
+                            b.append_bit(this_b);
                             y.append_bit(x->getPort("\\Y")[0]);
                         }
 
@@ -364,10 +383,29 @@ struct RecoverAdderCorePass : public Pass {
                         SigSpec y;
                         SigSpec cout;
 
-                        for (auto x : cur_adder)
+                        for (size_t i = 0; i < cur_adder.size(); i++)
                         {
-                            a.append_bit(x->getPort("\\A")[0]);
-                            b.append_bit(x->getPort("\\B")[0]);
+                            auto x = cur_adder[i];
+                            auto this_a = x->getPort("\\A")[0];
+                            auto this_b = x->getPort("\\B")[0];
+                            if (x->type == "\\__XOR3_")
+                            {
+                                auto this_c = x->getPort("\\C")[0];
+                                SigBit last_cout;
+                                if (!is_sub)
+                                    last_cout = cur_adder[i - 1]->getPort("\\Cout")[0];
+                                else
+                                    last_cout = cur_adder[i - 1]->getPort("\\Bout")[0];
+
+                                if (sigmap(this_a) == sigmap(last_cout))
+                                    this_a = this_c;
+                                else if (sigmap(this_b) == sigmap(last_cout))
+                                    this_b = this_c;
+                                else
+                                    log_assert(sigmap(this_c) == sigmap(last_cout));
+                            }
+                            a.append_bit(this_a);
+                            b.append_bit(this_b);
                             y.append_bit(x->getPort("\\Y")[0]);
                             auto portname = is_sub ? "\\Bout" : "\\Cout";
                             if (x->hasPort(portname))
