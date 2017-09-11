@@ -18,6 +18,7 @@ OBJS += passes/techmap/hilomap.o
 OBJS += passes/techmap/extract.o
 OBJS += passes/techmap/extract_fa.o
 OBJS += passes/techmap/extract_counter.o
+OBJS += passes/techmap/extract_bus.o
 OBJS += passes/techmap/extract_reduce.o
 OBJS += passes/techmap/recover_adder.o
 $(eval $(call add_share_file,share/untechmap,passes/techmap/adder_untechmap.lib))
