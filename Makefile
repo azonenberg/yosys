@@ -121,7 +121,7 @@ endif
 ifeq ($(CONFIG),clang)
 CXX = clang
 LD = clang++
-CXXFLAGS += -std=c++11 -Os
+CXXFLAGS += -std=c++11 -O0
 
 ifneq ($(SANITIZER),)
 $(info [Clang Sanitizer] $(SANITIZER))
@@ -143,12 +143,12 @@ endif
 else ifeq ($(CONFIG),gcc)
 CXX = gcc
 LD = gcc
-CXXFLAGS += -std=c++11 -Os
+CXXFLAGS += -std=c++11 -O0
 
 else ifeq ($(CONFIG),gcc-4.8)
 CXX = gcc-4.8
 LD = gcc-4.8
-CXXFLAGS += -std=c++11 -Os
+CXXFLAGS += -std=c++11 -O0
 
 else ifeq ($(CONFIG),emcc)
 CXX = emcc

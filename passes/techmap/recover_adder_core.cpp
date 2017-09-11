@@ -200,6 +200,7 @@ struct RecoverAdderCorePass : public Pass {
                     {
                         // This has to be the end of the chain
                         has_carryin = true;
+                        break;
                     }
                     else
                     {
