@@ -49,32 +49,46 @@ void recover_tff_counters_worker(
 	SigMap& sigmap = index.sigmap;
 	auto module = cell->module;
 
-	//Start by looking at TFFs
+	//Start by looking at D flipflops since the LSB of our counter doesn't match a TFF structure
 	if (cell->type.str().find("_DFF") == string::npos)
 		return;
-
-	//Find the driver of our D input. It should be an inverter for the LSB, which is our anchor cell.
 	auto tdriver = GetDriverOfPort(cell, "\\D", "\\Y", index);
 	if(tdriver == ModIndex::PortInfo())
 		return;
-	if(tdriver.cell->type != "$_NOT_")
-		return;
 
-	//Verify that the inverter is driven by our output
-	auto anchordriver = GetDriverOfPort(tdriver.cell, "\\A", "\\Q", index);
-	if(anchordriver == ModIndex::PortInfo())
+	//Even cycle length: LSB always toggles, inverter feedback
+	//Odd cycle length: more complex matching
+	ModIndex::PortInfo anchordriver;
+	if(tdriver.cell->type == "$_NOT_")
+	{
+		//Verify that the inverter is driven by our output
+		anchordriver = GetDriverOfPort(tdriver.cell, "\\A", "\\Q", index);
+		if(anchordriver == ModIndex::PortInfo())
+			return;
+		if(anchordriver.cell != cell)
+			return;
+	}
+	else if(tdriver.cell->type == "$_ANDNOT_")
+	{
+		log_warning("Skipping possible counter LSB fed by ANDNOT (odd cycle lengths not implemented)\n");
 		return;
-	if(anchordriver.cell != cell)
+	}
+	else
+	{
+		//not a supported extraction structure, skip it
 		return;
+	}
 
 	//TODO: Figure out how to recover reset value etc
 
-	//log("Found candidate counter LSB at %s (%s)\n", log_id(cell->name), cell->type.c_str());
+	log("Found candidate counter LSB at %s (%s)\n", log_id(cell->name), cell->type.c_str());
 
 	//Look down the counter toward the MSB.
 	//We should see a chain of AND-NOTs and TFFs, sharing our reset and clock inputs
-	auto anchor_reset = index.sigmap(cell->getPort("\\R"));
-	auto anchor_clock = index.sigmap(cell->getPort("\\C"));
+	RTLIL::SigSpec anchor_reset;
+	if(cell->hasPort("\\R"))
+		anchor_reset = sigmap(cell->getPort("\\R"));
+	auto anchor_clock = sigmap(cell->getPort("\\C"));
 	Cell* current_cell = cell;
 	std::vector<Cell*> downstream_flipflops;
 	while(true)
@@ -83,7 +97,7 @@ void recover_tff_counters_worker(
 			downstream_flipflops.push_back(current_cell);
 
 		//Stage 1: Look for the ANDNOT
-		auto q = index.sigmap(current_cell->getPort("\\Q"));
+		auto q = sigmap(current_cell->getPort("\\Q"));
 		pool<ModIndex::PortInfo> qports = index.query_ports(q);
 		std::vector<Cell*> andnots;
 		for(auto x : qports)
@@ -137,7 +151,7 @@ void recover_tff_counters_worker(
 		bool hit = false;
 		for(auto anot : andnots)
 		{
-			auto y = index.sigmap(anot->getPort("\\Y"));
+			auto y = sigmap(anot->getPort("\\Y"));
 			pool<ModIndex::PortInfo> yports = index.query_ports(y);
 			for(auto x : yports)
 			{
@@ -150,9 +164,16 @@ void recover_tff_counters_worker(
 					continue;
 
 				//Verify that we share the same clock and reset
-				if(anchor_reset != index.sigmap(x.cell->getPort("\\R")))
+				if(cell->hasPort("\\R"))
+				{
+					if(!x.cell->hasPort("\\R"))
+						continue;
+					if(anchor_reset != sigmap(x.cell->getPort("\\R")))
+						continue;
+				}
+				else if(x.cell->hasPort("\\R"))
 					continue;
-				if(anchor_clock != index.sigmap(x.cell->getPort("\\C")))
+				if(anchor_clock != sigmap(x.cell->getPort("\\C")))
 					continue;
 
 				//Found it
