@@ -217,7 +217,10 @@ void recover_tff_counters_worker(
 	counter->setParam("\\DIRECTION", RTLIL::Const("DOWN"));
 	counter->setPort("\\CE", RTLIL::Const(1));
 	counter->setPort("\\UP", RTLIL::Const(0));
-	counter->setPort("\\RST", cell->getPort("\\R"));
+	if(cell->hasPort("\\R"))
+		counter->setPort("\\RST", cell->getPort("\\R"));
+	else
+		counter->setPort("\\RST", RTLIL::Const(0));
 	counter->setPort("\\CLK", cell->getPort("\\C"));
 	//no OUT connection yet
 
