@@ -60,9 +60,11 @@ PRIVATE_NAMESPACE_BEGIN
 
 #ifdef YOSYS_ENABLE_VERIFIC
 
+string verific_error_msg;
+
 void msg_func(msg_type_t msg_type, const char *message_id, linefile_type linefile, const char *msg, va_list args)
 {
-	string message = stringf("VERIFIC-%s [%s] ",
+	string message_prefix = stringf("VERIFIC-%s [%s] ",
 			msg_type == VERIFIC_NONE ? "NONE" :
 			msg_type == VERIFIC_ERROR ? "ERROR" :
 			msg_type == VERIFIC_WARNING ? "WARNING" :
@@ -71,15 +73,16 @@ void msg_func(msg_type_t msg_type, const char *message_id, linefile_type linefil
 			msg_type == VERIFIC_COMMENT ? "COMMENT" :
 			msg_type == VERIFIC_PROGRAM_ERROR ? "PROGRAM_ERROR" : "UNKNOWN", message_id);
 
-	if (linefile)
-		message += stringf("%s:%d: ", LineFile::GetFileName(linefile), LineFile::GetLineNo(linefile));
-
+	string message = linefile ? stringf("%s:%d: ", LineFile::GetFileName(linefile), LineFile::GetLineNo(linefile)) : "";
 	message += vstringf(msg, args);
 
 	if (msg_type == VERIFIC_ERROR || msg_type == VERIFIC_WARNING || msg_type == VERIFIC_PROGRAM_ERROR)
-		log_warning_noprefix("%s\n", message.c_str());
+		log_warning_noprefix("%s%s\n", message_prefix.c_str(), message.c_str());
 	else
-		log("%s\n", message.c_str());
+		log("%s%s\n", message_prefix.c_str(), message.c_str());
+
+	if (verific_error_msg.empty() && (msg_type == VERIFIC_ERROR || msg_type == VERIFIC_PROGRAM_ERROR))
+		verific_error_msg = message;
 }
 
 string get_full_netlist_name(Netlist *nl)
@@ -912,7 +915,7 @@ struct VerificImporter
 
 			if (found_new_net)
 			{
-				RTLIL::IdString wire_name = module->uniquify(mode_names || netbus->IsUserDeclared() ? RTLIL::escape_id(net->Name()) : NEW_ID);
+				RTLIL::IdString wire_name = module->uniquify(mode_names || netbus->IsUserDeclared() ? RTLIL::escape_id(netbus->Name()) : NEW_ID);
 
 				if (verbose)
 					log("  importing netbus %s as %s.\n", netbus->Name(), log_id(wire_name));
@@ -1190,6 +1193,9 @@ struct VerificImporter
 
 			if (inst->IsPrimitive())
 			{
+				if (inst->Type() == PRIM_HDL_ASSERTION)
+					continue;
+
 				if (!mode_keep)
 					log_error("Unsupported Verific primitive %s of type %s\n", inst->Name(), inst->View()->Owner()->Name());
 
@@ -1743,6 +1749,7 @@ struct VerificPass : public Pass {
 		Message::SetConsoleOutput(0);
 		Message::RegisterCallBackMsg(msg_func);
 		RuntimeFlags::SetVar("db_allow_external_nets", 1);
+		RuntimeFlags::SetVar("vhdl_ignore_assertion_statements", 0);
 
 		const char *release_str = Message::ReleaseString();
 		time_t release_time = Message::ReleaseDate();
@@ -1762,35 +1769,35 @@ struct VerificPass : public Pass {
 			for (argidx++; argidx < GetSize(args); argidx++)
 				if (!veri_file::Analyze(args[argidx].c_str(), veri_file::VERILOG_95))
 					log_cmd_error("Reading `%s' in VERILOG_95 mode failed.\n", args[argidx].c_str());
-			return;
+			goto check_error;
 		}
 
 		if (GetSize(args) > argidx && args[argidx] == "-vlog2k") {
 			for (argidx++; argidx < GetSize(args); argidx++)
 				if (!veri_file::Analyze(args[argidx].c_str(), veri_file::VERILOG_2K))
 					log_cmd_error("Reading `%s' in VERILOG_2K mode failed.\n", args[argidx].c_str());
-			return;
+			goto check_error;
 		}
 
 		if (GetSize(args) > argidx && args[argidx] == "-sv2005") {
 			for (argidx++; argidx < GetSize(args); argidx++)
 				if (!veri_file::Analyze(args[argidx].c_str(), veri_file::SYSTEM_VERILOG_2005))
 					log_cmd_error("Reading `%s' in SYSTEM_VERILOG_2005 mode failed.\n", args[argidx].c_str());
-			return;
+			goto check_error;
 		}
 
 		if (GetSize(args) > argidx && args[argidx] == "-sv2009") {
 			for (argidx++; argidx < GetSize(args); argidx++)
 				if (!veri_file::Analyze(args[argidx].c_str(), veri_file::SYSTEM_VERILOG_2009))
 					log_cmd_error("Reading `%s' in SYSTEM_VERILOG_2009 mode failed.\n", args[argidx].c_str());
-			return;
+			goto check_error;
 		}
 
 		if (GetSize(args) > argidx && (args[argidx] == "-sv2012" || args[argidx] == "-sv")) {
 			for (argidx++; argidx < GetSize(args); argidx++)
 				if (!veri_file::Analyze(args[argidx].c_str(), veri_file::SYSTEM_VERILOG))
 					log_cmd_error("Reading `%s' in SYSTEM_VERILOG mode failed.\n", args[argidx].c_str());
-			return;
+			goto check_error;
 		}
 
 		if (GetSize(args) > argidx && args[argidx] == "-vhdl87") {
@@ -1798,7 +1805,7 @@ struct VerificPass : public Pass {
 			for (argidx++; argidx < GetSize(args); argidx++)
 				if (!vhdl_file::Analyze(args[argidx].c_str(), "work", vhdl_file::VHDL_87))
 					log_cmd_error("Reading `%s' in VHDL_87 mode failed.\n", args[argidx].c_str());
-			return;
+			goto check_error;
 		}
 
 		if (GetSize(args) > argidx && args[argidx] == "-vhdl93") {
@@ -1806,7 +1813,7 @@ struct VerificPass : public Pass {
 			for (argidx++; argidx < GetSize(args); argidx++)
 				if (!vhdl_file::Analyze(args[argidx].c_str(), "work", vhdl_file::VHDL_93))
 					log_cmd_error("Reading `%s' in VHDL_93 mode failed.\n", args[argidx].c_str());
-			return;
+			goto check_error;
 		}
 
 		if (GetSize(args) > argidx && args[argidx] == "-vhdl2k") {
@@ -1814,7 +1821,7 @@ struct VerificPass : public Pass {
 			for (argidx++; argidx < GetSize(args); argidx++)
 				if (!vhdl_file::Analyze(args[argidx].c_str(), "work", vhdl_file::VHDL_2K))
 					log_cmd_error("Reading `%s' in VHDL_2K mode failed.\n", args[argidx].c_str());
-			return;
+			goto check_error;
 		}
 
 		if (GetSize(args) > argidx && (args[argidx] == "-vhdl2008" || args[argidx] == "-vhdl")) {
@@ -1822,7 +1829,7 @@ struct VerificPass : public Pass {
 			for (argidx++; argidx < GetSize(args); argidx++)
 				if (!vhdl_file::Analyze(args[argidx].c_str(), "work", vhdl_file::VHDL_2008))
 					log_cmd_error("Reading `%s' in VHDL_2008 mode failed.\n", args[argidx].c_str());
-			return;
+			goto check_error;
 		}
 
 		if (GetSize(args) > argidx && args[argidx] == "-vhdpsl") {
@@ -1830,7 +1837,7 @@ struct VerificPass : public Pass {
 			for (argidx++; argidx < GetSize(args); argidx++)
 				if (!vhdl_file::Analyze(args[argidx].c_str(), "work", vhdl_file::VHDL_PSL))
 					log_cmd_error("Reading `%s' in VHDL_PSL mode failed.\n", args[argidx].c_str());
-			return;
+			goto check_error;
 		}
 
 		if (GetSize(args) > argidx && args[argidx] == "-import")
@@ -1969,10 +1976,15 @@ struct VerificPass : public Pass {
 			}
 
 			Libset::Reset();
-			return;
+			goto check_error;
 		}
 
 		log_cmd_error("Missing or unsupported mode parameter.\n");
+
+	check_error:
+		if (!verific_error_msg.empty())
+			log_error("%s\n", verific_error_msg.c_str());
+
 	}
 #else /* YOSYS_ENABLE_VERIFIC */
 	virtual void execute(std::vector<std::string>, RTLIL::Design *) {

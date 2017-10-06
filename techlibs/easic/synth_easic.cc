@@ -25,32 +25,35 @@
 USING_YOSYS_NAMESPACE
 PRIVATE_NAMESPACE_BEGIN
 
-struct SynthIntelPass : public ScriptPass {
-	SynthIntelPass() : ScriptPass("synth_intel", "synthesis for Intel (Altera) FPGAs.") { }
+struct SynthEasicPass : public ScriptPass
+{
+	SynthEasicPass() : ScriptPass("synth_easic", "synthesis for eASIC platform") { }
 
 	virtual void help() YS_OVERRIDE
 	{
 		//   |---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|---v---|
 		log("\n");
-		log("    synth_intel [options]\n");
+		log("    synth_easic [options]\n");
 		log("\n");
-		log("This command runs synthesis for Intel FPGAs. This work is still experimental.\n");
-		log("\n");
-		log("    -family < max10 | cycloneiv >\n");
-		log("        generate the synthesis netlist for the specified family.\n");
-		log("        MAX10 is the default target if not family argument specified \n");
+		log("This command runs synthesis for eASIC platform.\n");
 		log("\n");
 		log("    -top <module>\n");
-		log("        use the specified module as top module (default='top')\n");
+		log("        use the specified module as top module\n");
 		log("\n");
-		log("    -vout <file>\n");
-		log("        write the design to the specified Verilog netlist file. writing of an\n");
-		log("        output file is omitted if this parameter is not specified.\n");
+		log("    -vlog <file>\n");
+		log("        write the design to the specified structural Verilog file. writing of\n");
+		log("        an output file is omitted if this parameter is not specified.\n");
+		log("\n");
+		log("    -etools <path>\n");
+		log("        set path to the eTools installation. (default=/opt/eTools)\n");
 		log("\n");
 		log("    -run <from_label>:<to_label>\n");
 		log("        only run the commands between the labels (see below). an empty\n");
 		log("        from label is synonymous to 'begin', and empty to label is\n");
 		log("        synonymous to the end of the command list.\n");
+		log("\n");
+		log("    -noflatten\n");
+		log("        do not flatten design before synthesis\n");
 		log("\n");
 		log("    -retime\n");
 		log("        run 'abc' with -dff option\n");
@@ -61,35 +64,36 @@ struct SynthIntelPass : public ScriptPass {
 		log("\n");
 	}
 
-        string top_opt, family_opt, vout_file;
-	bool retime;
+	string top_opt, vlog_file, etools_path;
+	bool flatten, retime;
 
 	virtual void clear_flags() YS_OVERRIDE
 	{
 		top_opt = "-auto-top";
-                family_opt = "max10";
-		vout_file = "";
+		vlog_file = "";
+		etools_path = "/opt/eTools";
+		flatten = true;
 		retime = false;
 	}
 
 	virtual void execute(std::vector<std::string> args, RTLIL::Design *design) YS_OVERRIDE
 	{
-	  string run_from, run_to;
+		string run_from, run_to;
 		clear_flags();
 
 		size_t argidx;
 		for (argidx = 1; argidx < args.size(); argidx++)
 		{
-		        if (args[argidx] == "-family" && argidx+1 < args.size()) {
-				family_opt = args[++argidx];
-				continue;
-			}
 			if (args[argidx] == "-top" && argidx+1 < args.size()) {
 				top_opt = "-top " + args[++argidx];
 				continue;
 			}
-			if (args[argidx] == "-vout" && argidx+1 < args.size()) {
-				vout_file = args[++argidx];
+			if (args[argidx] == "-vlog" && argidx+1 < args.size()) {
+				vlog_file = args[++argidx];
+				continue;
+			}
+			if (args[argidx] == "-etools" && argidx+1 < args.size()) {
+				etools_path = args[++argidx];
 				continue;
 			}
 			if (args[argidx] == "-run" && argidx+1 < args.size()) {
@@ -98,6 +102,10 @@ struct SynthIntelPass : public ScriptPass {
 					break;
 				run_from = args[++argidx].substr(0, pos);
 				run_to = args[argidx].substr(pos+1);
+				continue;
+			}
+			if (args[argidx] == "-noflatten") {
+				flatten = false;
 				continue;
 			}
 			if (args[argidx] == "-retime") {
@@ -111,10 +119,7 @@ struct SynthIntelPass : public ScriptPass {
 		if (!design->full_selection())
 			log_cmd_error("This comannd only operates on fully selected designs!\n");
 
-                if (family_opt != "max10" && family_opt !="cycloneiv" )
-		  log_cmd_error("Invalid or not family specified: '%s'\n", family_opt.c_str());
-
-		log_header(design, "Executing SYNTH_INTEL pass.\n");
+		log_header(design, "Executing SYNTH_EASIC pass.\n");
 		log_push();
 
 		run_script(design, run_from, run_to);
@@ -124,26 +129,20 @@ struct SynthIntelPass : public ScriptPass {
 
 	virtual void script() YS_OVERRIDE
 	{
-	  if (check_label("begin"))
-	  {
-		  if(check_label("family") && family_opt=="max10")
-		  {
-			run("read_verilog -lib +/altera_intel/max10/cells_comb_max10.v");
-			run(stringf("hierarchy -check %s", help_mode ? "-top <top>" : top_opt.c_str()));
-		  }
-		  else
-		  {
-		      run("read_verilog -lib +/altera_intel/cycloneiv/cells_comb_cycloneiv.v");
-		      run(stringf("hierarchy -check %s", help_mode ? "-top <top>" : top_opt.c_str()));
-		  }
-	  }
+		string phys_clk_lib = stringf("%s/data_ruby28/design_libs/logical/timing/gp/n3x_phys_clk_0v893ff125c.lib", etools_path.c_str());
+		string logic_lut_lib = stringf("%s/data_ruby28/design_libs/logical/timing/gp/n3x_logic_lut_0v893ff125c.lib", etools_path.c_str());
 
-		if (check_label("flatten"))
+		if (check_label("begin"))
+		{
+			run(stringf("read_liberty -lib %s", help_mode ? "<etools_phys_clk_lib>" : phys_clk_lib.c_str()));
+			run(stringf("read_liberty -lib %s", help_mode ? "<etools_logic_lut_lib>" : logic_lut_lib.c_str()));
+			run(stringf("hierarchy -check %s", help_mode ? "-top <top>" : top_opt.c_str()));
+		}
+
+		if (flatten && check_label("flatten", "(unless -noflatten)"))
 		{
 			run("proc");
 			run("flatten");
-			run("tribuf -logic");
-			run("deminout");
 		}
 
 		if (check_label("coarse"))
@@ -153,31 +152,22 @@ struct SynthIntelPass : public ScriptPass {
 
 		if (check_label("fine"))
 		{
-		        run("opt -fast -full");
+			run("opt -fast -mux_undef -undriven -fine");
 			run("memory_map");
-			run("opt -full");
-			run("techmap -map +/techmap.v");
-                        run("opt -fast");
-			run("clean -purge");
-			run("setundef -undriven -zero");
-			if (retime || help_mode)
-				run("abc -dff", "(only if -retime)");
+			run("opt -undriven -fine");
+			run("techmap");
+			run("opt -fast");
+			if (retime || help_mode) {
+				run("abc -dff", " (only if -retime)");
+				run("opt_clean", "(only if -retime)");
+			}
 		}
 
-		if (check_label("map_luts"))
+		if (check_label("map"))
 		{
-		        run("abc -lut 4");
-			run("clean");
-		}
-
-		if (check_label("map_cells"))
-		{
-			run("iopadmap -bits -outpad $__outpad I:O -inpad $__inpad O:I");
-			if(family_opt=="max10")
-			  run("techmap -map +/altera_intel/max10/cells_map_max10.v");
-			else
-			  run("techmap -map +/altera_intel/cycloneiv/cells_map_cycloneiv.v");
-			run("clean -purge");
+			run(stringf("dfflibmap -liberty %s", help_mode ? "<etools_phys_clk_lib>" : phys_clk_lib.c_str()));
+			run(stringf("abc -liberty %s", help_mode ? "<etools_logic_lut_lib>" : logic_lut_lib.c_str()));
+			run("opt_clean");
 		}
 
 		if (check_label("check"))
@@ -187,13 +177,12 @@ struct SynthIntelPass : public ScriptPass {
 			run("check -noinit");
 		}
 
-		if (check_label("vout"))
+		if (check_label("vlog"))
 		{
-			if (!vout_file.empty() || help_mode)
-				run(stringf("write_verilog -nodec -attr2comment -defparam -nohex -renameprefix yosys_ %s",
-						help_mode ? "<file-name>" : vout_file.c_str()));
+			if (!vlog_file.empty() || help_mode)
+				run(stringf("write_verilog -noexpr -attr2comment %s", help_mode ? "<file-name>" : vlog_file.c_str()));
 		}
 	}
-} SynthIntelPass;
+} SynthEasicPass;
 
 PRIVATE_NAMESPACE_END
