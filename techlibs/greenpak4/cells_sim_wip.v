@@ -91,8 +91,7 @@ module GP_RINGOSC(input PWRDN, output reg CLKOUT_HARDIP, output reg CLKOUT_FABRI
 		end
 		else begin
 			//half period of 27 MHz
-			//#18.518;
-			#18;
+			#18.518;
 			CLKOUT_HARDIP = ~CLKOUT_HARDIP;
 			CLKOUT_FABRIC = ~CLKOUT_FABRIC;
 		end
