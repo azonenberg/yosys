@@ -620,16 +620,26 @@ struct HierarchyPass : public Pass {
 			}
 		}
 
-		for (auto module : design->modules())
+		std::set<Module*> blackbox_derivatives;
+		std::vector<Module*> design_modules = design->modules();
+
+		for (auto module : design_modules)
 		for (auto cell : module->cells())
 		{
-			if (GetSize(cell->parameters) != 0)
-				continue;
-
 			Module *m = design->module(cell->type);
 
-			if (m == nullptr || m->get_bool_attribute("\\blackbox"))
+			if (m == nullptr)
 				continue;
+
+			if (m->get_bool_attribute("\\blackbox") && !cell->parameters.empty()) {
+				IdString new_m_name = m->derive(design, cell->parameters, true);
+				if (new_m_name.empty())
+					continue;
+				if (new_m_name != m->name) {
+					m = design->module(new_m_name);
+					blackbox_derivatives.insert(m);
+				}
+			}
 
 			for (auto &conn : cell->connections())
 			{
@@ -672,6 +682,9 @@ struct HierarchyPass : public Pass {
 							log_id(module), log_id(cell), log_id(conn.first), log_id(cell->type), log_signal(sig));
 			}
 		}
+
+		for (auto module : blackbox_derivatives)
+			design->remove(module);
 
 		log_pop();
 	}
