@@ -172,6 +172,17 @@ bool RTLIL::Const::is_fully_zero() const
 	return true;
 }
 
+bool RTLIL::Const::is_fully_ones() const
+{
+	cover("kernel.rtlil.const.is_fully_ones");
+
+	for (auto bit : bits)
+		if (bit != RTLIL::State::S1)
+			return false;
+
+	return true;
+}
+
 bool RTLIL::Const::is_fully_def() const
 {
 	cover("kernel.rtlil.const.is_fully_def");
@@ -628,8 +639,10 @@ RTLIL::Module::~Module()
 		delete it->second;
 }
 
-RTLIL::IdString RTLIL::Module::derive(RTLIL::Design*, dict<RTLIL::IdString, RTLIL::Const>)
+RTLIL::IdString RTLIL::Module::derive(RTLIL::Design*, dict<RTLIL::IdString, RTLIL::Const>, bool mayfail)
 {
+	if (mayfail)
+		return RTLIL::IdString();
 	log_error("Module `%s' is used with parameters but is not parametric!\n", id2cstr(name));
 }
 
@@ -3348,6 +3361,21 @@ bool RTLIL::SigSpec::is_fully_zero() const
 			return false;
 		for (size_t i = 0; i < it->data.size(); i++)
 			if (it->data[i] != RTLIL::State::S0)
+				return false;
+	}
+	return true;
+}
+
+bool RTLIL::SigSpec::is_fully_ones() const
+{
+	cover("kernel.rtlil.sigspec.is_fully_ones");
+
+	pack();
+	for (auto it = chunks_.begin(); it != chunks_.end(); it++) {
+		if (it->width > 0 && it->wire != NULL)
+			return false;
+		for (size_t i = 0; i < it->data.size(); i++)
+			if (it->data[i] != RTLIL::State::S1)
 				return false;
 	}
 	return true;

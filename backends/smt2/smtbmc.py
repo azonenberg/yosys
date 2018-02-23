@@ -589,12 +589,16 @@ def write_vcd_trace(steps_start, steps_stop, index):
                 if n.startswith("$"):
                     hidden_net = True
             if not hidden_net:
-                vcd.add_net([topmod] + netpath, smt.net_width(topmod, netpath))
+                edge = smt.net_clock(topmod, netpath)
+                if edge is None:
+                    vcd.add_net([topmod] + netpath, smt.net_width(topmod, netpath))
+                else:
+                    vcd.add_clock([topmod] + netpath, edge)
                 path_list.append(netpath)
 
         mem_trace_data = dict()
         for mempath in sorted(smt.hiermems(topmod)):
-            abits, width, rports, wports = smt.mem_info(topmod, mempath)
+            abits, width, rports, wports, asyncwr = smt.mem_info(topmod, mempath)
 
             expr_id = list()
             expr_list = list()
@@ -666,7 +670,8 @@ def write_vcd_trace(steps_start, steps_stop, index):
                                     else:
                                         buf[k] = tdata[i][k]
 
-                    tdata.append(data[:])
+                    if not asyncwr:
+                        tdata.append(data[:])
 
                     for j_data in wdata[i]:
                         if j_data["A"] != addr:
@@ -678,6 +683,9 @@ def write_vcd_trace(steps_start, steps_stop, index):
                         for k in range(width):
                             if M[k] == "1":
                                 data[k] = D[k]
+
+                    if asyncwr:
+                        tdata.append(data[:])
 
                 assert len(tdata) == len(rdata)
 
@@ -785,7 +793,7 @@ def write_vlogtb_trace(steps_start, steps_stop, index):
 
         mems = sorted(smt.hiermems(vlogtb_topmod))
         for mempath in mems:
-            abits, width, rports, wports = smt.mem_info(vlogtb_topmod, mempath)
+            abits, width, rports, wports, asyncwr = smt.mem_info(vlogtb_topmod, mempath)
 
             addr_expr_list = list()
             data_expr_list = list()
@@ -888,7 +896,7 @@ def write_constr_trace(steps_start, steps_stop, index):
 
         mems = sorted(smt.hiermems(constr_topmod))
         for mempath in mems:
-            abits, width, rports, wports = smt.mem_info(constr_topmod, mempath)
+            abits, width, rports, wports, asyncwr = smt.mem_info(constr_topmod, mempath)
 
             addr_expr_list = list()
             data_expr_list = list()
@@ -1279,7 +1287,7 @@ else:  # not tempind, covermode
 
         step += step_size
 
-    if gentrace:
+    if gentrace and retstatus:
         print_anyconsts(0)
         write_trace(0, num_steps, '%')
 

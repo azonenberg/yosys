@@ -401,6 +401,9 @@ bool AstNode::simplify(bool const_fold, bool at_zero, bool in_lvalue, int stage,
 
 	if (type == AST_ALWAYS || type == AST_INITIAL)
 	{
+		if (current_always != nullptr)
+			log_error("Invalid nesting of always blocks and/or initializations at %s:%d.\n", filename.c_str(), linenum);
+
 		current_always = this;
 		current_always_clocked = false;
 
@@ -2635,6 +2638,7 @@ AstNode *AstNode::readmem(bool is_readmemh, std::string mem_filename, AstNode *m
 
 	std::ifstream f;
 	f.open(mem_filename.c_str());
+	yosys_input_files.insert(mem_filename);
 
 	if (f.fail())
 		log_error("Can not open file `%s` for %s at %s:%d.\n", mem_filename.c_str(), str.c_str(), filename.c_str(), linenum);

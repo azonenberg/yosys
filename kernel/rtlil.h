@@ -480,6 +480,7 @@ struct RTLIL::Const
 	inline const RTLIL::State &operator[](int index) const { return bits.at(index); }
 
 	bool is_fully_zero() const;
+	bool is_fully_ones() const;
 	bool is_fully_def() const;
 	bool is_fully_undef() const;
 
@@ -704,6 +705,7 @@ public:
 
 	bool is_fully_const() const;
 	bool is_fully_zero() const;
+	bool is_fully_ones() const;
 	bool is_fully_def() const;
 	bool is_fully_undef() const;
 	bool has_const() const;
@@ -904,7 +906,7 @@ public:
 
 	Module();
 	virtual ~Module();
-	virtual RTLIL::IdString derive(RTLIL::Design *design, dict<RTLIL::IdString, RTLIL::Const> parameters);
+	virtual RTLIL::IdString derive(RTLIL::Design *design, dict<RTLIL::IdString, RTLIL::Const> parameters, bool mayfail = false);
 	virtual size_t count_id(RTLIL::IdString id);
 
 	virtual void sort();

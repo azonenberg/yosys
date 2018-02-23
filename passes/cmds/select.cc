@@ -760,6 +760,9 @@ static void select_stmt(RTLIL::Design *design, std::string arg)
 	if (!design->selected_active_module.empty()) {
 		arg_mod = design->selected_active_module;
 		arg_memb = arg;
+	} else
+	if (GetSize(arg) >= 2 && arg[0] >= 'a' && arg[0] <= 'z' && arg[1] == ':') {
+		arg_mod = "*", arg_memb = arg;
 	} else {
 		size_t pos = arg.find('/');
 		if (pos == std::string::npos) {
@@ -1263,6 +1266,7 @@ struct SelectPass : public Pass {
 				log_cmd_error("Option -read can not be combined with a selection expression.\n");
 
 			std::ifstream f(read_file);
+			yosys_input_files.insert(read_file);
 			if (f.fail())
 				log_error("Can't open '%s' for reading: %s\n", read_file.c_str(), strerror(errno));
 
@@ -1331,6 +1335,7 @@ struct SelectPass : public Pass {
 			FILE *f = NULL;
 			if (!write_file.empty()) {
 				f = fopen(write_file.c_str(), "w");
+				yosys_output_files.insert(write_file);
 				if (f == NULL)
 					log_error("Can't open '%s' for writing: %s\n", write_file.c_str(), strerror(errno));
 			}
