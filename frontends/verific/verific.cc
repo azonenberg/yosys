@@ -478,6 +478,12 @@ bool VerificImporter::import_netlist_instance_cells(Instance *inst, RTLIL::IdStr
 		return true;
 	}
 
+	if (inst->Type() == OPER_REDUCE_NOR) {
+		SigSpec t = module->ReduceOr(NEW_ID, IN, SIGNED);
+		module->addNot(inst_name, t, net_map_at(inst->GetOutput()));
+		return true;
+	}
+
 	if (inst->Type() == OPER_LESSTHAN) {
 		Net *net_cin = inst->GetCin();
 		if (net_cin->IsGnd())
@@ -541,6 +547,44 @@ bool VerificImporter::import_netlist_instance_cells(Instance *inst, RTLIL::IdStr
 
 	if (inst->Type() == OPER_WIDE_MUX) {
 		module->addMux(inst_name, IN1, IN2, net_map_at(inst->GetControl()), OUT);
+		return true;
+	}
+
+	if (inst->Type() == OPER_NTO1MUX) {
+		module->addShr(inst_name, IN2, IN1, net_map_at(inst->GetOutput()));
+		return true;
+	}
+
+	if (inst->Type() == OPER_WIDE_NTO1MUX)
+	{
+		SigSpec data = IN2, out = OUT;
+
+		int wordsize_bits = ceil_log2(GetSize(out));
+		int wordsize = 1 << wordsize_bits;
+
+		SigSpec sel = {IN1, SigSpec(State::S0, wordsize_bits)};
+
+		SigSpec padded_data;
+		for (int i = 0; i < GetSize(data); i += GetSize(out)) {
+			SigSpec d = data.extract(i, GetSize(out));
+			d.extend_u0(wordsize);
+			padded_data.append(d);
+		}
+
+		module->addShr(inst_name, padded_data, sel, out);
+		return true;
+	}
+
+	if (inst->Type() == OPER_SELECTOR)
+	{
+		module->addPmux(inst_name, State::S0, IN2, IN1, net_map_at(inst->GetOutput()));
+		return true;
+	}
+
+	if (inst->Type() == OPER_WIDE_SELECTOR)
+	{
+		SigSpec out = OUT;
+		module->addPmux(inst_name, SigSpec(State::S0, GetSize(out)), IN2, IN1, out);
 		return true;
 	}
 

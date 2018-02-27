@@ -387,14 +387,20 @@ Non-standard or SystemVerilog features for formal verification
 - The system task ``$initstate`` evaluates to 1 in the initial state and
   to 0 otherwise.
 
-- The system task ``$anyconst`` evaluates to any constant value. This is
+- The system function ``$anyconst`` evaluates to any constant value. This is
   equivalent to declaring a reg as ``rand const``, but also works outside
   of checkers. (Yosys also supports ``rand const`` outside checkers.)
 
-- The system task ``$anyseq`` evaluates to any value, possibly a different
+- The system function ``$anyseq`` evaluates to any value, possibly a different
   value in each cycle. This is equivalent to declaring a reg as ``rand``,
   but also works outside of checkers. (Yosys also supports ``rand``
   variables outside checkers.)
+
+- The system functions ``$allconst`` and ``$allseq`` can be used to construct
+  formal exist-forall problems. Assumptions only hold if the trace satisfies
+  the assumtion for all ``$allconst/$allseq`` values. For assertions and cover
+  statements it is sufficient if just one ``$allconst/$allseq`` value triggers
+  the property (similar to ``$anyconst/$anyseq``).
 
 - The SystemVerilog tasks ``$past``, ``$stable``, ``$rose`` and ``$fell`` are
   supported in any clocked block.
